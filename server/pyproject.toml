@@ -1,9 +1,11 @@
 [project]
 name = "ai-server"
 version = "0.1.0"
-description = "本地 RAG 知识库问答服务（Ollama + bge-m3，全部本地推理）"
+description = "本地 RAG 知识库问答服务（Ollama + Qwen3-Embedding，全部本地推理）"
 readme = "../README.md"
-requires-python = ">=3.13"
+# 锁死 3.13：onnxruntime（fastembed 的运行时）目前还没有 cp315 的 wheel，
+# 而 brew 会把默认 python3 升级到最新版本，所以必须显式锁版本而不是写 >=3.13。
+requires-python = ">=3.13,<3.14"
 dependencies = [
     # Web
     "fastapi>=0.115",
@@ -35,4 +37,5 @@ package = false
 [dependency-groups]
 dev = [
     "ruff>=0.8",
+    "pytest>=8.0",
 ]

@@ -16,7 +16,7 @@ settings = get_settings()
 
 app = FastAPI(
     title="本地 RAG 知识库",
-    description="完全本地运行的文档问答服务（Ollama + bge-m3），不调用任何云端 AI",
+    description="完全本地运行的文档问答服务（Ollama + Qwen3-Embedding），不调用任何云端 AI",
     version="0.1.0",
 )
 

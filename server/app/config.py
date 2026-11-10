@@ -11,8 +11,15 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .hf_env import configure_fastembed_cache, configure_hf_endpoint
+
 # server/ 目录（app/ 的上一级）
 SERVER_DIR = Path(__file__).resolve().parent.parent
+
+# 导入本模块时就先把模型下载的运行时环境设好，保证任何入口（API / 评测脚本）
+# 在 import fastembed 之前都拿到正确的镜像地址和缓存目录
+configure_hf_endpoint()
+configure_fastembed_cache()
 
 
 class Settings(BaseSettings):
@@ -30,9 +37,14 @@ class Settings(BaseSettings):
     ollama_keep_alive: str = "5m"
 
     # ---------- 向量化 / 重排 ----------
-    embed_model: str = "BAAI/bge-m3"
+    embed_model: str = "Qwen/Qwen3-Embedding-0.6B-Q"
     vector_dim: int = 1024
-    rerank_model: str = "BAAI/bge-reranker-v2-m3"
+    # Qwen3-Embedding 的查询指令前缀。留空则不加前缀（换别的模型时用）。
+    embed_query_instruction: str = (
+        "Given a question, retrieve relevant passages from a knowledge base "
+        "that answer the question"
+    )
+    rerank_model: str = "BAAI/bge-reranker-v2-m3-int8"
     rerank_enabled: bool = True
 
     # ---------- 检索 ----------
@@ -45,9 +57,19 @@ class Settings(BaseSettings):
     chunk_target_chars: int = 500
     chunk_overlap_chars: int = 80
 
+    # ---------- 入库安全限制 ----------
+    upload_max_bytes: int = 50 * 1024 * 1024
+    url_max_bytes: int = 5 * 1024 * 1024
+    url_max_redirects: int = 3
+    url_allowed_content_types: str = "text/html,application/xhtml+xml"
+
     # ---------- 其它 ----------
     data_dir: str = "./data"
     cors_origins: str = "http://localhost:5173"
+    # HuggingFace 模型下载镜像。直连 huggingface.co 会超时
+    hf_endpoint: str = "https://hf-mirror.com"
+    # 模型缓存目录。fastembed 默认放系统临时目录，重启就没了
+    fastembed_cache_path: str = str(Path.home() / ".cache" / "fastembed")
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -81,4 +103,9 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """获取配置单例（FastAPI 依赖注入用）。"""
-    return Settings()
+    settings = Settings()
+    # .env 里的 HF_ENDPOINT / FASTEMBED_CACHE_PATH 也要生效
+    # （系统环境变量优先级更高，见 hf_env）
+    configure_hf_endpoint(settings.hf_endpoint)
+    configure_fastembed_cache(settings.fastembed_cache_path)
+    return settings

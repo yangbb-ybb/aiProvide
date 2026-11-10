@@ -1,3 +1,12 @@
-{"id":"q001","question":"生产环境必须设置哪两个环境变量？","answer":["DATABASE_URL","REDIS_URL"],"doc_id":"","chunk_ids":[],"note":"模板条目：入库后把 doc_id / chunk_ids 填成真实值"}
-{"id":"q002","question":"部署前需要执行哪条命令来安装依赖？","answer":["uv sync"],"doc_id":"","chunk_ids":[],"note":"模板条目：考察命令类问题"}
-{"id":"q003","question":"PDF 扫描件为什么无法被索引？","answer":["OCR"],"doc_id":"","chunk_ids":[],"note":"模板条目：考察跨文档的原理性问题"}
+{"id":"q001","question":"生产环境必须设置哪两个环境变量？","answer":["DATABASE_URL","REDIS_URL"],"source_name":"部署手册.md","chunk_idxs":[1],"note":"考察事实型召回：两个必填环境变量"}
+{"id":"q002","question":"部署前需要执行哪条命令来安装依赖？","answer":["uv sync"],"source_name":"部署手册.md","chunk_idxs":[2],"note":"考察命令类召回：代码块里的命令"}
+{"id":"q003","question":"为什么中文 BM25 检索出来的结果完全不相关？","answer":["jieba"],"source_name":"部署手册.md","chunk_idxs":[7],"note":"考察原理性问题：关键词路失效的原因"}
+{"id":"q004","question":"最低硬件配置要求是什么？内存低于多少会 OOM？","answer":["16GB"],"source_name":"部署手册.md","chunk_idxs":[1],"note":"考察跨句信息：配置与后果在相邻两句"}
+{"id":"q005","question":"后端和前端分别用什么命令启动？端口是多少？","answer":["uvicorn","5173"],"source_name":"部署手册.md","chunk_idxs":[5],"note":"考察跨块信息：启动章节的代码块与端口"}
+{"id":"q006","question":"答案里没有引用编号该怎么排查？","answer":["SYSTEM_PROMPT"],"source_name":"部署手册.md","chunk_idxs":[8],"note":"考察排障类问题"}
+{"id":"q007","question":"Ollama 冷启动慢是什么原因，怎么避免？","answer":["keep_alive"],"source_name":"部署手册.md","chunk_idxs":[9],"note":"考察原因 + 对策"}
+{"id":"q008","question":"磁盘紧张时优先关掉哪个开关？能省多少磁盘？","answer":["RERANK_ENABLED"],"source_name":"部署手册.md","chunk_idxs":[10],"note":"考察表格附近的正文（磁盘占用章节末段）"}
+{"id":"q009","question":"Windows 上部署有什么建议？","answer":["WSL2"],"source_name":"部署手册.md","chunk_idxs":[1],"note":"考察冷门事实：操作系统推荐"}
+{"id":"q010","question":"关掉重排会损失什么？为什么不能凭感觉判断？","answer":["评测"],"source_name":"部署手册.md","chunk_idxs":[10],"note":"考察因果链：最后一段的推理表述"}
+{"id":"q011","question":"REDIS_URL 的格式是什么样的？","answer":["redis://"],"source_name":"部署手册.md","chunk_idxs":[3],"note":"考察表格单元格里的格式串"}
+{"id":"q012","question":"依赖装完以后要跑什么自检命令？","answer":["app.eval.run"],"source_name":"部署手册.md","chunk_idxs":[2],"note":"考察自检步骤：容易和 q002 混淆"}

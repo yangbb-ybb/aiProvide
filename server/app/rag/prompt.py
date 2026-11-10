@@ -28,8 +28,13 @@ USER_TEMPLATE = """【参考资料】
 {question}"""
 
 
-def build_context(chunks: list[ScoredChunk]) -> str:
-    """把块拼成带 [n] 编号和来源标签的上下文。"""
+def build_context(chunks: list[ScoredChunk], max_chars: int = 800) -> str:
+    """把块拼成带 [n] 编号和来源标签的上下文。
+
+    每块正文裁到 max_chars 字（规划文档 §4.5）：
+    再长信息密度下降，而且会挤占上下文预算（5 块 × 800 字 ≈ 4000 token）。
+    裁剪点优先落在句读边界，避免把句子截断成半句。
+    """
     parts = []
     for i, c in enumerate(chunks, start=1):
         src = c.source_path
@@ -37,13 +42,30 @@ def build_context(chunks: list[ScoredChunk]) -> str:
             src += " > " + " > ".join(c.heading_path)
         if c.page is not None:
             src += f" 第{c.page}页"
-        parts.append(f"[{i}] (来源：{src})\n{c.content}")
+        parts.append(f"[{i}] (来源：{src})\n{_truncate(c.content, max_chars)}")
     return "\n\n".join(parts)
 
 
-def build_messages(question: str, chunks: list[ScoredChunk]) -> list[dict]:
+def _truncate(text: str, max_chars: int) -> str:
+    """裁到 max_chars 字，尽量落在句读边界上。"""
+    if max_chars <= 0 or len(text) <= max_chars:
+        return text
+    window = text[:max_chars]
+    for sep in ("。", "！", "？", "；", "\n", "。", "!", "?", ";"):
+        idx = window.rfind(sep)
+        if idx >= max_chars * 0.5:
+            return window[: idx + 1]
+    return window + "…"
+
+
+def build_messages(question: str, chunks: list[ScoredChunk], max_chars: int = 800) -> list[dict]:
     """组装成 Ollama /api/chat 的 messages 数组。"""
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": USER_TEMPLATE.format(context=build_context(chunks), question=question)},
+        {
+            "role": "user",
+            "content": USER_TEMPLATE.format(
+                context=build_context(chunks, max_chars=max_chars), question=question
+            ),
+        },
     ]

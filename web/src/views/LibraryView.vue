@@ -1,31 +1,28 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 
-interface DocumentSummary {
-  doc_id: string
-  source_path: string
-  source_type: string
-  title: string
-  chunks: number
-  mtime: number
-}
+import {
+  deleteDocument,
+  fetchDocuments,
+  ingestUrl,
+  uploadDocument,
+  type DocumentSummary,
+} from '../api/client'
 
 const docs = ref<DocumentSummary[]>([])
 const loading = ref(false)
 const error = ref('')
+const notice = ref('')
 const uploading = ref(false)
+const url = ref('')
+const ingestingUrl = ref(false)
+const deletingId = ref('')
 
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    const res = await fetch('/api/documents')
-    if (res.status === 501) {
-      docs.value = []
-      return
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    docs.value = (await res.json()) as DocumentSummary[]
+    docs.value = await fetchDocuments()
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -39,17 +36,49 @@ async function onUpload(e: Event) {
   if (!file) return
   uploading.value = true
   error.value = ''
+  notice.value = ''
   try {
-    const form = new FormData()
-    form.append('file', file)
-    const res = await fetch('/api/documents', { method: 'POST', body: form })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    await uploadDocument(file)
+    notice.value = `已导入 ${file.name}`
     await load()
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     uploading.value = false
     input.value = ''
+  }
+}
+
+async function onIngestUrl() {
+  const value = url.value.trim()
+  if (!value || ingestingUrl.value) return
+  ingestingUrl.value = true
+  error.value = ''
+  notice.value = ''
+  try {
+    await ingestUrl(value)
+    notice.value = `已导入网页 ${value}`
+    url.value = ''
+    await load()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    ingestingUrl.value = false
+  }
+}
+
+async function onDelete(doc: DocumentSummary) {
+  if (!confirm(`确定删除「${doc.title || doc.source_path}」及其 ${doc.chunks} 个块？`)) return
+  deletingId.value = doc.doc_id
+  error.value = ''
+  try {
+    await deleteDocument(doc.doc_id)
+    notice.value = `已删除 ${doc.title || doc.source_path}`
+    await load()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    deletingId.value = ''
   }
 }
 
@@ -69,14 +98,29 @@ onMounted(load)
       </div>
     </div>
 
+    <form class="url-form" @submit.prevent="onIngestUrl">
+      <input
+        v-model="url"
+        type="url"
+        placeholder="粘贴网页地址，例如 https://example.com/article"
+        :disabled="ingestingUrl"
+        required
+      />
+      <button class="primary" type="submit" :disabled="ingestingUrl || !url.trim()">
+        {{ ingestingUrl ? '导入中…' : '导入网址' }}
+      </button>
+    </form>
+
     <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="notice" class="notice">{{ notice }}</p>
 
     <div v-if="loading" class="empty">加载中…</div>
     <div v-else-if="docs.length === 0" class="empty">
       <p>还没有文档。</p>
       <p class="hint">
-        M1 实现后可以在这里上传 md / pdf / docx / xlsx / pptx，或直接贴一个网址。<br />
-        也可以把文件丢进 <code>server/data/uploads/</code>。
+        在这里上传 md / pdf / docx / xlsx / pptx，或直接贴一个网址。<br />
+        也可以把文件丢进 <code>server/data/uploads/</code>，然后用
+        <code>uv run python -m app.eval.run</code> 之外的入库脚本手动处理。
       </p>
     </div>
 
@@ -87,6 +131,7 @@ onMounted(load)
           <th>类型</th>
           <th>块数</th>
           <th>修改时间</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -95,6 +140,15 @@ onMounted(load)
           <td><span class="type">{{ d.source_type }}</span></td>
           <td>{{ d.chunks }}</td>
           <td>{{ new Date(d.mtime * 1000).toLocaleString('zh-CN') }}</td>
+          <td>
+            <button
+              class="del"
+              :disabled="deletingId === d.doc_id"
+              @click="onDelete(d)"
+            >
+              {{ deletingId === d.doc_id ? '删除中…' : '删除' }}
+            </button>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -152,6 +206,31 @@ h2 {
   background: var(--hover);
 }
 
+.url-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.url-form input {
+  flex: 1;
+}
+
+.primary {
+  background: #1f6feb;
+  border: 1px solid #1f6feb;
+  border-radius: 6px;
+  color: #fff;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .hint {
   font-size: 12px;
   opacity: 0.75;
@@ -168,6 +247,31 @@ code {
 .error {
   color: #f85149;
   margin-bottom: 12px;
+}
+
+.notice {
+  color: #3fb950;
+  margin-bottom: 12px;
+}
+
+.del {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.del:hover:not(:disabled) {
+  color: #f85149;
+  border-color: #f85149;
+}
+
+.del:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .table {

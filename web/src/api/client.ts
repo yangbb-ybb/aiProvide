@@ -12,6 +12,42 @@ export interface Citation {
   page: number | null
   score: number
   preview: string
+  title?: string
+  chunk_id?: string
+  scores?: Record<string, number>
+}
+
+/** 检索调试面板用的召回块。 */
+export interface DebugChunk {
+  chunk_id: string
+  doc_id: string
+  content: string
+  source_path: string
+  source_type: string
+  title: string
+  heading_path: string[]
+  page: number | null
+  chunk_idx: number
+  score: number
+  scores: Record<string, number>
+}
+
+/** /api/search 的完整响应。 */
+export interface SearchResponse {
+  query: string
+  top_n: number
+  count: number
+  results: DebugChunk[]
+}
+
+/** /api/documents 列表项。 */
+export interface DocumentSummary {
+  doc_id: string
+  source_path: string
+  source_type: string
+  title: string
+  chunks: number
+  mtime: number
 }
 
 export type ChatEvent =
@@ -37,6 +73,65 @@ export async function fetchHealth(): Promise<Health> {
   const res = await fetch(`${BASE}/health`)
   if (!res.ok) throw new Error(`健康检查失败：HTTP ${res.status}`)
   return (await res.json()) as Health
+}
+
+/** 文档列表。 */
+export async function fetchDocuments(): Promise<DocumentSummary[]> {
+  const res = await fetch(`${BASE}/documents`)
+  if (!res.ok) throw new Error(`文档列表获取失败：HTTP ${res.status}`)
+  return (await res.json()) as DocumentSummary[]
+}
+
+/** 上传文档并入库。 */
+export async function uploadDocument(file: File): Promise<void> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE}/documents`, { method: 'POST', body: form })
+  if (!res.ok) {
+    // 后端返回 detail 字段时把中文提示带出来，比 HTTP 500 有用
+    const body = await res.json().catch(() => null)
+    const detail = body && typeof body.detail === 'string' ? body.detail : `HTTP ${res.status}`
+    throw new Error(detail)
+  }
+}
+
+/** 通过 URL 导入网页并入库。 */
+export async function ingestUrl(url: string): Promise<void> {
+  const res = await fetch(`${BASE}/documents/url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const detail = body && typeof body.detail === 'string' ? body.detail : `HTTP ${res.status}`
+    throw new Error(detail)
+  }
+}
+
+/** 删除文档。 */
+export async function deleteDocument(docId: string): Promise<void> {
+  const res = await fetch(`${BASE}/documents/${encodeURIComponent(docId)}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const detail = body && typeof body.detail === 'string' ? body.detail : `HTTP ${res.status}`
+    throw new Error(detail)
+  }
+}
+
+/** 检索调试：只看召回结果，不经过模型。 */
+export async function searchChunks(query: string, topK = 10): Promise<SearchResponse> {
+  const res = await fetch(`${BASE}/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, top_k: topK }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const detail = body && typeof body.detail === 'string' ? body.detail : `HTTP ${res.status}`
+    throw new Error(detail)
+  }
+  return (await res.json()) as SearchResponse
 }
 
 /** 发起流式问答，逐个吐出后端事件。 */

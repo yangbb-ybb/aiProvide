@@ -46,7 +46,7 @@ server/app/
 | httpx | 调 Ollama | 小 |
 | pydantic-settings | 配置 | 小 |
 | lancedb + pyarrow | 向量仓库（嵌入式） | 中 |
-| fastembed | bge-m3 向量化 + bge-reranker-v2-m3 重排（ONNX，不含 PyTorch） | ~150MB + 模型 2.3GB |
+| fastembed | Qwen3-Embedding-0.6B-Q 向量化 + bge-reranker-v2-m3-int8 重排（ONNX，不含 PyTorch） | ~150MB + 模型 1.7GB |
 | jieba | 中文分词（BM25 用） | 小 |
 | bm25s | BM25 检索 | 小 |
 | numpy | 向量运算 | 小 |
@@ -54,8 +54,20 @@ server/app/
 | python-docx / openpyxl / python-pptx | Office 解析 | 小 |
 | trafilatura + beautifulsoup4 | 网页正文抽取 | 中 |
 | 前端：vue / vite / pinia | UI | — |
+| pytest（dev 组） | 跑 `tests/` 下的单元测试 | 小（仅开发期，不进运行时） |
 
 **刻意不引入**：torch、transformers、sentence-transformers、langchain、llama-index、chroma、milvus-client、faiss。
+
+**Python 版本必须锁 3.13**：`server/.python-version` 写死 `3.13`，`pyproject.toml` 里 `requires-python = ">=3.13,<3.14"`。
+原因：fastembed 的运行时是 `onnxruntime`，它目前没有 cp315 的 wheel；而 `brew install ollama` 会把 Homebrew 默认 python3 升到 3.15，
+uv 若按 `>=3.13` 解析就会选中 3.15，导致 `uv sync` 直接失败（"doesn't have a source distribution or wheel for the current platform"）。
+写成 `>=3.13` 是错的 —— 只能写死上界。
+
+**模型下载要走镜像，缓存要放持久目录**（`server/app/hf_env.py`）：
+- `HF_ENDPOINT=https://hf-mirror.com` —— 直连 huggingface.co 会一直超时挂住。
+- `FASTEMBED_CACHE_PATH=~/.cache/fastembed` —— fastembed 默认把权重放系统临时目录
+  （macOS 的 `/var/folders/.../T/`），重启或磁盘紧张时会被清掉，1.7GB 白下。
+- 两个变量都必须在 `import fastembed` 之前设好，所以统一在 `app/config.py` 里设置。
 
 ## 5. 检索链路的硬性要求
 
@@ -71,7 +83,7 @@ server/app/
 
 | 参数 | 默认 | 依据 |
 |---|---|---|
-| `CHUNK_TARGET_CHARS` | 500 | <300 语义不完整；>800 超出 bge-m3 的 512-token 训练窗口 |
+| `CHUNK_TARGET_CHARS` | 500 | <300 语义不完整；>800 超出嵌入模型 512-token 训练窗口 |
 | `CHUNK_OVERLAP_CHARS` | 80 | 约 16%，够补断句又不至于让相邻块挤占 top-k 名额 |
 | `RETRIEVE_TOP_N` | 50 | 召回宁多勿漏；50 条重排成本约 1~2s |
 | `RRF_K` | 60 | 业界通用值，与 LanceDB 官方默认一致 |

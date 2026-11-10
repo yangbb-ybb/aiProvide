@@ -1,19 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-interface DebugChunk {
-  chunk_id: string
-  source_path: string
-  heading_path: string[]
-  page: number | null
-  content: string
-  scores: Record<string, number>
-}
+import { searchChunks, type DebugChunk } from '../api/client'
 
 const query = ref('')
 const results = ref<DebugChunk[]>([])
 const error = ref('')
 const loading = ref(false)
+const topN = ref(10)
 
 async function run() {
   if (!query.value.trim()) return
@@ -21,17 +15,8 @@ async function run() {
   error.value = ''
   results.value = []
   try {
-    const res = await fetch('/api/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: query.value, top_k: 10 }),
-    })
-    if (res.status === 501) {
-      error.value = '检索调试接口在 M1 阶段实现 —— 先把检索链路跑通再回来调参。'
-      return
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    results.value = (await res.json()) as DebugChunk[]
+    const res = await searchChunks(query.value, topN.value)
+    results.value = res.results
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {

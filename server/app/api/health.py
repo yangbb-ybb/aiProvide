@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 
 from ..config import get_settings
 from ..deps import get_ollama
@@ -12,7 +12,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-async def health(client: OllamaClient = Depends(get_ollama)) -> dict:
+async def health(response: Response, client: OllamaClient = Depends(get_ollama)) -> dict:
     """返回各依赖的状态。ollama 字段为 "ok" 或一段可操作的中文提示。"""
     s = get_settings()
     try:
@@ -22,8 +22,10 @@ async def health(client: OllamaClient = Depends(get_ollama)) -> dict:
         models = []
         ollama_status = str(exc)
 
+    if ollama_status != "ok":
+        response.status_code = 503
     return {
-        "status": "ok",
+        "status": ollama_status == "ok" and "ok" or "degraded",
         "ollama": ollama_status,
         "chat_model": s.ollama_chat_model,
         "models": models,
