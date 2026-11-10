@@ -1,0 +1,3 @@
+{"id":"q001","question":"生产环境必须设置哪两个环境变量？","answer":["DATABASE_URL","REDIS_URL"],"doc_id":"","chunk_ids":[],"note":"模板条目：入库后把 doc_id / chunk_ids 填成真实值"}
+{"id":"q002","question":"部署前需要执行哪条命令来安装依赖？","answer":["uv sync"],"doc_id":"","chunk_ids":[],"note":"模板条目：考察命令类问题"}
+{"id":"q003","question":"PDF 扫描件为什么无法被索引？","answer":["OCR"],"doc_id":"","chunk_ids":[],"note":"模板条目：考察跨文档的原理性问题"}

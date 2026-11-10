@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# 环境变量（含密钥）
+.env
+.env.*
+!.env.example
+
+# 运行时数据（向量库、索引、上传的原始文档）
+server/data/
+*.lance/
+*.lance/
+uploads/
+
+# 评测结果历史
+server/app/eval/results/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.local
+
+# 编辑器 / 系统
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
