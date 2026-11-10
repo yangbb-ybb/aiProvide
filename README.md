@@ -34,8 +34,8 @@ cd web && npm install && npm run dev
 | 后端 | Python 3.13 + uv + FastAPI |
 | 前端 | Vue 3 + Vite + Pinia |
 | 生成模型 | Ollama + `qwen3:4b`（开源权重，Metal 加速） |
-| 向量模型 | `BAAI/bge-m3`（ONNX，无需 PyTorch） |
-| 重排模型 | `BAAI/bge-reranker-v2-m3`（ONNX） |
+| 向量模型 | `Qwen/Qwen3-Embedding-0.6B-Q`（ONNX int8，1024 维，无需 PyTorch） |
+| 重排模型 | `BAAI/bge-reranker-v2-m3-int8`（ONNX int8） |
 | 向量库 | LanceDB（嵌入式，无服务） |
 | 关键词索引 | jieba + bm25s（自建，中文分词） |
 
