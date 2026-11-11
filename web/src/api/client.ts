@@ -62,7 +62,7 @@ export type ChatEvent =
   | { type: 'error'; message: string; session_id?: string }
 
 export interface Health {
-  status: string
+  status_code: number
   ollama: string
   chat_model: string
   models: string[]
