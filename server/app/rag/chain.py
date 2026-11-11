@@ -16,7 +16,14 @@ from .retriever import ScoredChunk
 
 logger = logging.getLogger(__name__)
 
-_NO_HIT_ANSWER = "知识库里没有检索到与这个问题相关的内容，暂时无法回答。请换个说法，或先把相关文档导入知识库。"
+_NO_HIT_ANSWER = "本地知识库没有检索到相关资料。"
+_GENERAL_SYSTEM = """你是一个有帮助的中文 AI 助手。
+本地知识库没有找到与用户问题直接相关的资料，请使用你的通用知识回答。
+要求：
+1. 直接回答问题，不要编造“本地资料”或不存在的引用编号。
+2. 如果问题需要实时信息、个人数据或你无法确认的事实，要明确说明限制。
+3. 简洁、清楚地给出结论和必要解释。
+4. 开头先说明“本地知识库未命中，以下为通用回答”，然后再回答。"""
 _QUERY_REWRITE_SYSTEM = """你是知识库检索查询改写器。请结合最近对话，把用户的最新问题改写成一条可以独立检索的中文查询。
 要求：
 1. 补全“它、这个、上述方案、那为什么”等指代，但不要编造对话里没有的事实。
@@ -125,8 +132,10 @@ async def rag_answer_stream(
         chunks = await asyncio.to_thread(retriever.retrieve, question, top_k)
 
     if not chunks:
-        logger.info("召回为空：%s", question)
-        yield ("delta", _NO_HIT_ANSWER)
+        logger.info("本地知识库未命中，降级为通用回答：%s", question)
+        # 没有本地资料时不要直接拒答；明确告知用户答案来自模型通用能力。
+        async for piece in client.chat_stream(system=_GENERAL_SYSTEM, user=question):
+            yield ("delta", piece)
         yield ("done", {})
         return
 
