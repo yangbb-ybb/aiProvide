@@ -25,12 +25,18 @@ class OllamaClient:
         self,
         host: str,
         model: str,
-        keep_alive: str = "5m",
-        timeout: float = 300.0,
+        keep_alive: str = "30m",
+        num_ctx: int = 4096,
+        num_predict: int = 512,
+        think: bool = False,
+        timeout: float = 60.0,
     ) -> None:
         self.host = host.rstrip("/")
         self.model = model
         self.keep_alive = keep_alive
+        self.num_ctx = num_ctx
+        self.num_predict = num_predict
+        self.think = think
         self._timeout = timeout
 
     async def list_models(self) -> list[str]:
@@ -54,7 +60,9 @@ class OllamaClient:
         user: str,
         temperature: float = 0.1,
         top_p: float = 0.8,
-        num_ctx: int = 8192,
+        num_ctx: int | None = None,
+        num_predict: int | None = None,
+        think: bool | None = None,
     ) -> AsyncIterator[str]:
         """流式生成，逐段 yield 增量文本。
 
@@ -74,8 +82,10 @@ class OllamaClient:
             "options": {
                 "temperature": temperature,
                 "top_p": top_p,
-                "num_ctx": num_ctx,
+                "num_ctx": num_ctx or self.num_ctx,
+                "num_predict": num_predict or self.num_predict,
             },
+            "think": self.think if think is None else think,
         }
         try:
             # 刻意不用 `async with a, b:` 合并写法：

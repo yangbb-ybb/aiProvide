@@ -34,7 +34,10 @@ class Settings(BaseSettings):
     # ---------- Ollama ----------
     ollama_host: str = "http://127.0.0.1:11434"
     ollama_chat_model: str = "qwen3:4b"
-    ollama_keep_alive: str = "5m"
+    ollama_keep_alive: str = "30m"
+    ollama_num_ctx: int = 4096
+    ollama_num_predict: int = 512
+    ollama_think: bool = False
 
     # ---------- 向量化 / 重排 ----------
     embed_model: str = "Qwen/Qwen3-Embedding-0.6B-Q"
@@ -51,7 +54,7 @@ class Settings(BaseSettings):
     retrieve_top_n: int = 50
     rrf_k: int = 60
     rerank_top_k: int = 5
-    context_chunk_chars: int = 800
+    context_chunk_chars: int = 500
 
     # ---------- 分块 ----------
     chunk_target_chars: int = 500

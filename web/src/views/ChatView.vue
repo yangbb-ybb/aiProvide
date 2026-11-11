@@ -6,6 +6,7 @@ import { useChatStore } from '../stores/chat'
 const store = useChatStore()
 const input = ref('')
 const listEl = ref<HTMLElement | null>(null)
+const shouldFollowOutput = ref(true)
 
 function send() {
   const q = input.value
@@ -14,10 +15,18 @@ function send() {
   void store.ask(q)
 }
 
-// 流式输出时保持滚动到底部
+function onMessagesScroll() {
+  const el = listEl.value
+  if (!el) return
+  // 只有用户本来就在底部附近时才跟随新内容；用户向上阅读时绝不抢滚动位置。
+  shouldFollowOutput.value = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+}
+
+// 流式输出时仅在用户未主动上翻时保持滚动到底部。
 watch(
-  () => store.messages.map((m) => m.content.length).join(','),
+  () => store.messages.map((m) => `${m.content.length}:${m.progress ?? ''}:${m.citations.length}`).join(','),
   async () => {
+    if (!shouldFollowOutput.value) return
     await nextTick()
     if (listEl.value) listEl.value.scrollTop = listEl.value.scrollHeight
   },
@@ -26,7 +35,7 @@ watch(
 
 <template>
   <div class="chat">
-    <div ref="listEl" class="messages">
+    <div ref="listEl" class="messages" @scroll="onMessagesScroll">
       <div v-if="store.messages.length === 0" class="empty">
         <p>问点什么吧 —— 回答会基于你导入的资料，并标注来源。</p>
         <p class="hint">支持连续追问和不同说法；事实仍以知识库资料为准。</p>
@@ -34,7 +43,8 @@ watch(
 
       <div v-for="(m, i) in store.messages" :key="i" :class="['msg', m.role]">
         <div class="bubble">
-          <div class="content">{{ m.content }}<span v-if="m.role === 'assistant' && store.streaming && i === store.messages.length - 1" class="cursor">▍</span></div>
+          <div v-if="m.role === 'assistant' && !m.content && m.progress" class="progress">{{ m.progress }}<span class="cursor">▍</span></div>
+          <div v-if="m.content" class="content">{{ m.content }}<span v-if="m.role === 'assistant' && store.streaming && i === store.messages.length - 1" class="cursor">▍</span></div>
 
           <div v-if="m.error" class="error">{{ m.error }}</div>
 
@@ -115,6 +125,11 @@ watch(
   max-width: 76%;
   background: #1f6feb26;
   border-color: #1f6feb55;
+}
+
+.progress {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .content {

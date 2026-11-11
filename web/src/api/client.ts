@@ -56,6 +56,7 @@ export interface ChatHistoryMessage {
 }
 
 export type ChatEvent =
+  | { type: 'progress'; phase: string; message: string }
   | { type: 'delta'; text: string }
   | { type: 'citation'; citations: Citation[] }
   | { type: 'done'; session_id?: string }
@@ -169,17 +170,22 @@ export async function* chatStream(
     if (done) break
     buffer += decoder.decode(value, { stream: true })
 
-    // SSE 以空行分隔事件帧
-    const frames = buffer.split('\n\n')
+    // SSE 以空行分隔事件帧；兼容后端/代理使用的 CRLF 换行。
+    const frames = buffer.split(/\r?\n\r?\n/)
     buffer = frames.pop() ?? ''
 
     for (const frame of frames) {
-      const line = frame.trim()
-      if (!line.startsWith('data:')) continue
+      const line = frame
+        .split(/\r?\n/)
+        .find((item) => item.startsWith('data:'))
+      if (!line) continue
       const payload = line.slice(5).trim()
       if (!payload) continue
       try {
+        // 每个事件都主动把控制权还给浏览器一次，确保 Vue 在收到一小段
+        // delta 后立即绘制，而不是等整个 fetch 完成后才统一刷新界面。
         yield JSON.parse(payload) as ChatEvent
+        await new Promise<void>((resolve) => setTimeout(resolve, 0))
       } catch {
         // 跳过解析不了的帧，不要因为一帧坏数据打断整段回答
       }

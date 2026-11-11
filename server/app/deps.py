@@ -29,6 +29,9 @@ def get_ollama() -> OllamaClient:
         host=s.ollama_host,
         model=s.ollama_chat_model,
         keep_alive=s.ollama_keep_alive,
+        num_ctx=s.ollama_num_ctx,
+        num_predict=s.ollama_num_predict,
+        think=s.ollama_think,
     )
 
 

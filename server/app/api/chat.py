@@ -68,6 +68,11 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
+def _progress(message: str, phase: str) -> str:
+    """返回前端可立即显示的处理阶段事件。"""
+    return _sse({"type": "progress", "phase": phase, "message": message})
+
+
 @router.post("/chat")
 async def chat(
     req: ChatRequest,
@@ -144,6 +149,7 @@ async def chat(
         try:
             # ── ⑦a 知识库是不是空的 ─────────────────────────────────────
             # count() 要查向量库，也是同步阻塞调用。
+            yield _progress("正在检查知识库…", "kb_count")
             phase_started = time.perf_counter()
             kb_empty = await asyncio.to_thread(vector_store.count) == 0
             logger.info(
@@ -192,6 +198,7 @@ async def chat(
                 return
 
             # ── ⑦c 有资料：走完整 RAG 链路 ─────────────────────────────
+            yield _progress("正在检索资料…", "retrieval")
             # rag_answer_stream 内部依次做：
             #   查询改写（结合 history，把「它」「上面那个」补全成能独立检索的问句）
             #   → 召回 → RRF 融合 → 邻居扩展 → 重排（CPU 密集，它自己会挪到线程）
