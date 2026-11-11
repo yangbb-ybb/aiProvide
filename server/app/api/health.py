@@ -25,7 +25,7 @@ async def health(response: Response, client: OllamaClient = Depends(get_ollama))
     if ollama_status != "ok":
         response.status_code = 503
     return {
-        "status": ollama_status == "ok" and "ok" or "degraded",
+        "status": "ok" if ollama_status == "ok" else "degraded",
         "ollama": ollama_status,
         "chat_model": s.ollama_chat_model,
         "models": models,

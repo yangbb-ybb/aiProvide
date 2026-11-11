@@ -20,12 +20,12 @@ def make_doc_id(source_path: str, mtime: float) -> str:
     带上 mtime 是为了让「同一个文件改了内容」变成一个新文档：
     mtime 变了 → doc_id 变了 → 旧版本的块可以被清掉，不会出现两份。
     """
-    return hashlib.sha1(f"{source_path}:{mtime}".encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha1(f"{source_path}:{mtime}".encode()).hexdigest()[:16]
 
 
 def content_hash(text: str) -> str:
     """内容哈希，用于跨文档去重和幂等更新判断。"""
-    return hashlib.sha1(text.encode("utf-8")).hexdigest()
+    return hashlib.sha1(text.encode()).hexdigest()
 
 
 def index_document(
@@ -83,7 +83,7 @@ def index_document(
     bm25_index.delete_by_source_path(source_path)
 
     rows: list[dict] = []
-    for chunk, vector in zip(chunks, vectors):
+    for chunk, vector in zip(chunks, vectors, strict=True):
         chunk_id = f"{doc_id}:{chunk.chunk_idx}"
         chunk.chunk_id = chunk_id
         chunk.doc_id = doc_id

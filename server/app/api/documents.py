@@ -70,7 +70,7 @@ async def upload_document(
     except ValueError as exc:
         target.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("文档入库失败：%s", filename)
         raise HTTPException(status_code=500, detail="文档入库失败，请查看服务日志") from exc
 
@@ -98,7 +98,7 @@ async def ingest_url(
         result = await asyncio.to_thread(index_document, url, "url")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("URL 入库失败：%s", url)
         raise HTTPException(status_code=500, detail="URL 入库失败，请查看服务日志") from exc
 

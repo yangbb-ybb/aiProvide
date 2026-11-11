@@ -327,9 +327,11 @@ def load_pptx(path: str) -> ParsedDoc:
 
 def load_url(url: str) -> ParsedDoc:
     """安全抓取网页，拒绝内网地址并限制重定向和响应大小。"""
+    # 这三个库只在抓网页时才用得上，延迟导入：不装它们也能跑 md/pdf 入库
     import httpx
     import trafilatura
     from bs4 import BeautifulSoup
+
     from ..config import get_settings
 
     def safe_url(candidate: str) -> None:
@@ -386,7 +388,7 @@ def load_url(url: str) -> ParsedDoc:
         extracted = trafilatura.extract(
             html, include_links=False, include_tables=True, include_comments=False
         )
-    except Exception:  # trafilatura 对畸形 HTML 偶尔会抛，交给下面的降级分支
+    except Exception:  # noqa: BLE001 - trafilatura 对畸形 HTML 偶尔会抛，交给下面的降级分支
         extracted = None
 
     if extracted and len(extracted.strip()) >= 100:

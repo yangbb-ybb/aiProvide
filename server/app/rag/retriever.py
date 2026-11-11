@@ -43,7 +43,7 @@ class ScoredChunk:
     chunk_idx: int = 0
 
     @staticmethod
-    def from_row(row: dict) -> "ScoredChunk":
+    def from_row(row: dict) -> ScoredChunk:
         """从向量库返回的一行构造。"""
         heading_path = row.get("heading_path") or []
         if isinstance(heading_path, str):
@@ -111,13 +111,24 @@ class Retriever:
 
         embed_started = time.perf_counter()
         query_vector = self.embedder.embed_query(query)
-        logger.info("检索阶段完成：query_embedding_ms=%.2f", (time.perf_counter() - embed_started) * 1000)
+        logger.info(
+            "检索阶段完成：query_embedding_ms=%.2f",
+            (time.perf_counter() - embed_started) * 1000,
+        )
         dense_started = time.perf_counter()
         dense_rows = self.vector_store.search(query_vector, limit=limit)
-        logger.info("检索阶段完成：dense_ms=%.2f dense_count=%d", (time.perf_counter() - dense_started) * 1000, len(dense_rows))
+        logger.info(
+            "检索阶段完成：dense_ms=%.2f dense_count=%d",
+            (time.perf_counter() - dense_started) * 1000,
+            len(dense_rows),
+        )
         bm25_started = time.perf_counter()
         bm25_hits = self.bm25_index.search(query, limit=limit)
-        logger.info("检索阶段完成：bm25_ms=%.2f bm25_count=%d", (time.perf_counter() - bm25_started) * 1000, len(bm25_hits))
+        logger.info(
+            "检索阶段完成：bm25_ms=%.2f bm25_count=%d",
+            (time.perf_counter() - bm25_started) * 1000,
+            len(bm25_hits),
+        )
 
         # ---- RRF 融合 ----
         # score(d) = 1/(K + rank_dense) + 1/(K + rank_bm25)
@@ -149,7 +160,7 @@ class Retriever:
             entry["bm25_score"] = score
 
         scored: list[ScoredChunk] = []
-        for chunk_id, entry in fused.items():
+        for entry in fused.values():
             rrf = 0.0
             if entry["dense_rank"]:
                 rrf += 1.0 / (self.rrf_k + entry["dense_rank"])
@@ -171,7 +182,11 @@ class Retriever:
         if self.neighbor_expand > 0:
             neighbor_started = time.perf_counter()
             top = self._expand_neighbors(top)
-            logger.info("检索阶段完成：neighbor_ms=%.2f expanded_count=%d", (time.perf_counter() - neighbor_started) * 1000, len(top))
+            logger.info(
+                "检索阶段完成：neighbor_ms=%.2f expanded_count=%d",
+                (time.perf_counter() - neighbor_started) * 1000,
+                len(top),
+            )
 
         logger.info(
             "召回完成：dense=%d bm25=%d 融合=%d 候选=%d",

@@ -12,9 +12,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.ingest.chunker import chunk_markdown  # noqa: E402
-from app.rag.prompt import _truncate, build_context  # noqa: E402
-from app.rag.retriever import ScoredChunk  # noqa: E402
+from app.ingest.chunker import chunk_markdown
+from app.rag.prompt import _truncate, build_context
+from app.rag.retriever import ScoredChunk
 
 SAMPLE = """# 项目总览
 

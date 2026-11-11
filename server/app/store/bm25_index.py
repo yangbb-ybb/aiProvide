@@ -79,7 +79,7 @@ class BM25Index:
         self.add_records(
             [
                 {"chunk_id": cid, "doc_id": did, "text": text}
-                for cid, text, did in zip(chunk_ids, texts, doc_ids)
+                for cid, text, did in zip(chunk_ids, texts, doc_ids, strict=True)
             ]
         )
 
@@ -165,7 +165,7 @@ class BM25Index:
             return []
 
         results: list[tuple[str, float]] = []
-        for idx, score in zip(indices, scores):
+        for idx, score in zip(indices, scores, strict=True):
             if idx < 0 or idx >= len(self._docs):
                 continue
             results.append((self._docs[idx]["chunk_id"], float(score)))

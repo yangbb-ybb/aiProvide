@@ -153,7 +153,7 @@ def run_retrieval(qa: list[dict], retriever, top_n: int = 10, rerank: bool = Tru
             "scores": {k: recall_at_k(matched, expected, k) for k in METRIC_KS},
             "mrr": {k: mrr_at_k(matched, expected, k) for k in METRIC_KS},
         }
-        for chunk, m in zip(chunks, matched):
+        for chunk, m in zip(chunks, matched, strict=True):
             row["hits"].append(
                 {
                     "chunk_id": chunk.chunk_id,

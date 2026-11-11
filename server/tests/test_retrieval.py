@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.rag.retriever import Retriever, ScoredChunk  # noqa: E402
+from app.rag.retriever import Retriever, ScoredChunk
 
 
 def _row(chunk_id: str, doc_id: str = "doc1", chunk_idx: int = 0, similarity: float = 0.9) -> dict:
@@ -78,7 +78,7 @@ def test_rrf_formula():
     """RRF 分数必须严格等于 1/(K+rank_dense) + 1/(K+rank_bm25)。"""
     dense = [_row("a"), _row("b")]
     bm25 = [("b", 5.0), ("c", 3.0)]
-    r = _retriever(dense, bm25, all_rows=dense + [_row("c")], rrf_k=60, fusion_top_n=10)
+    r = _retriever(dense, bm25, all_rows=[*dense, _row("c")], rrf_k=60, fusion_top_n=10)
 
     got = {c.chunk_id: c.score for c in r.retrieve_raw("查询", 10)}
 
@@ -91,7 +91,7 @@ def test_single_path_contributes_zero():
     """只在一路里出现的块，另一路贡献 0。"""
     dense = [_row("a")]
     bm25 = [("z", 1.0)]
-    r = _retriever(dense, bm25, all_rows=dense + [_row("z")], rrf_k=60, fusion_top_n=10)
+    r = _retriever(dense, bm25, all_rows=[*dense, _row("z")], rrf_k=60, fusion_top_n=10)
     got = {c.chunk_id: c.score for c in r.retrieve_raw("查询", 10)}
     assert abs(got["z"] - 1 / 61) < 1e-9
     assert abs(got["a"] - 1 / 61) < 1e-9
@@ -104,7 +104,7 @@ def test_agreement_ranks_higher():
     r = _retriever(
         dense,
         bm25,
-        all_rows=dense + [_row("only_bm25")],
+        all_rows=[*dense, _row("only_bm25")],
         rrf_k=60,
         fusion_top_n=10,
     )
@@ -117,7 +117,7 @@ def test_bm25_only_chunk_metadata_is_filled():
     """只在关键词路出现的块，元数据也要从向量库捞出来。"""
     dense = [_row("a")]
     bm25 = [("b", 1.0)]
-    r = _retriever(dense, bm25, all_rows=dense + [_row("b")], fusion_top_n=10)
+    r = _retriever(dense, bm25, all_rows=[*dense, _row("b")], fusion_top_n=10)
     chunks = {c.chunk_id: c for c in r.retrieve_raw("查询", 10)}
     assert "b" in chunks
     assert chunks["b"].content == "块 b 的正文"

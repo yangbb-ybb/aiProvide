@@ -78,7 +78,9 @@ class OllamaClient:
             },
         }
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
+            # 刻意不用 `async with a, b:` 合并写法：
+            # 合并后两个 __aexit__ 的异常传播路径会变，出问题时不好排查
+            async with httpx.AsyncClient(timeout=self._timeout) as client:  # noqa: SIM117
                 async with client.stream("POST", f"{self.host}/api/chat", json=payload) as resp:
                     if resp.status_code == 404:
                         raise OllamaError(f"模型 {self.model} 不存在，请执行 `ollama pull {self.model}`")

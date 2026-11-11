@@ -46,7 +46,10 @@ def test_rewrite_query_uses_history():
         client = FakeClient(["项目为什么选择 LanceDB 作为向量数据库 向量存储 选型"])
         rewritten = await rewrite_retrieval_query(
             "为什么选择它？",
-            [{"role": "user", "content": "项目使用什么向量数据库？"}, {"role": "assistant", "content": "使用 LanceDB。"}],
+            [
+                {"role": "user", "content": "项目使用什么向量数据库？"},
+                {"role": "assistant", "content": "使用 LanceDB。"},
+            ],
             client,
         )
         assert "LanceDB" in rewritten

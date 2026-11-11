@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.store.bm25_index import BM25Index, _split_retrieve_result  # noqa: E402
+from app.store.bm25_index import BM25Index, _split_retrieve_result
 
 _TEXTS = [
     "生产环境必须设置 DATABASE_URL 和 REDIS_URL 两个环境变量",

@@ -264,11 +264,10 @@ def _split_sentences(text: str) -> list[str]:
             start = j
             i = j
             continue
-        if ch == ".":
+        if ch == "." and (i + 1 >= n or text[i + 1].isspace()):
             # 英文句号：后面必须是空白或结尾，否则是小数点 / 缩写
-            if i + 1 >= n or text[i + 1].isspace():
-                sentences.append(text[start : i + 1])
-                start = i + 1
+            sentences.append(text[start : i + 1])
+            start = i + 1
         i += 1
     if start < n:
         sentences.append(text[start:])
