@@ -18,9 +18,11 @@ from .api import chat, documents, health, search, sessions
 from .config import get_settings
 from .deps import get_conversation_store
 from .logging_config import configure_logging
+from .db.migrate import migrate
 
 settings = get_settings()
 configure_logging(settings)
+migrate(settings.conversation_db_path)
 logger = logging.getLogger("app.request")
 
 app = FastAPI(

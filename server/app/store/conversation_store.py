@@ -12,13 +12,15 @@ import time
 from pathlib import Path
 from uuid import uuid4
 
+from ..db.migrate import migrate
+
 
 class ConversationStore:
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
-        self._init_schema()
+        migrate(self.db_path)
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, timeout=30.0)
@@ -27,56 +29,6 @@ class ConversationStore:
         conn.execute("PRAGMA foreign_keys=ON")
         conn.execute("PRAGMA busy_timeout=30000")
         return conn
-
-    def _init_schema(self) -> None:
-        with self._lock, self._connect() as conn:
-            conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS sessions (
-                    id TEXT PRIMARY KEY,
-                    title TEXT NOT NULL DEFAULT '',
-                    created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS messages (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    session_id TEXT NOT NULL,
-                    turn_id TEXT NOT NULL,
-                    role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
-                    content TEXT NOT NULL,
-                    citations_json TEXT NOT NULL DEFAULT '[]',
-                    status TEXT NOT NULL DEFAULT 'complete',
-                    error TEXT,
-                    created_at REAL NOT NULL,
-                    FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_messages_session_created
-                    ON messages(session_id, created_at, id);
-                CREATE INDEX IF NOT EXISTS idx_messages_turn
-                    ON messages(turn_id);
-
-                CREATE TABLE IF NOT EXISTS api_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    request_id TEXT NOT NULL,
-                    method TEXT NOT NULL,
-                    path TEXT NOT NULL,
-                    query TEXT NOT NULL DEFAULT '',
-                    status_code INTEGER NOT NULL,
-                    duration_ms REAL NOT NULL,
-                    client_ip TEXT,
-                    session_id TEXT,
-                    error TEXT,
-                    created_at REAL NOT NULL
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_api_logs_created
-                    ON api_logs(created_at);
-                CREATE INDEX IF NOT EXISTS idx_api_logs_request
-                    ON api_logs(request_id);
-                """
-            )
 
     def ensure_session(self, session_id: str | None, first_question: str = "") -> str:
         session_id = session_id or uuid4().hex
