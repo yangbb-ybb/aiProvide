@@ -26,6 +26,12 @@ class JsonFormatter(logging.Formatter):
             "duration_ms",
             "client_ip",
             "session_id",
+            "phase",
+            "query_chars",
+            "history_messages",
+            "candidate_count",
+            "result_count",
+            "first_token_ms",
         ):
             value = getattr(record, key, None)
             if value is not None:

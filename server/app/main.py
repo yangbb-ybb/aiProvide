@@ -16,9 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .api import chat, documents, health, search, sessions
 from .config import get_settings
+from .db.migrate import migrate
 from .deps import get_conversation_store
 from .logging_config import configure_logging
-from .db.migrate import migrate
 
 settings = get_settings()
 configure_logging(settings)
@@ -44,6 +44,7 @@ app.add_middleware(
 async def request_logging_middleware(request: Request, call_next):
     """记录每个接口的状态码、耗时、来源和会话 ID。"""
     request_id = request.headers.get("X-Request-ID") or uuid4().hex
+    request.state.request_id = request_id
     session_id = request.headers.get("X-Session-ID")
     started = time.perf_counter()
     status_code = 500
@@ -59,6 +60,7 @@ async def request_logging_middleware(request: Request, call_next):
     finally:
         duration_ms = round((time.perf_counter() - started) * 1000, 2)
         client_ip = request.client.host if request.client else None
+        session_id = getattr(request.state, "session_id", session_id)
         extra = {
             "request_id": request_id,
             "method": request.method,

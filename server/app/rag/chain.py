@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import AsyncIterator
 
 from ..llm.ollama import OllamaClient
@@ -73,6 +74,7 @@ async def rag_answer_stream(
     top_k: int = 5,
     context_chunk_chars: int = 800,
     history: list[dict] | None = None,
+    trace_id: str | None = None,
 ) -> AsyncIterator[tuple[str, object]]:
     """流式产出 (event_type, payload)。
 
@@ -85,14 +87,36 @@ async def rag_answer_stream(
     重排不在这里做 —— retriever 内部已经装了 reranker，retrieve() 返回的就是精排结果。
     """
     conversation = history or []
+    rewrite_started = time.perf_counter()
     retrieval_query = await rewrite_retrieval_query(question, conversation, client)
+    logger.info(
+        "chat 阶段完成",
+        extra={
+            "request_id": trace_id,
+            "phase": "query_rewrite",
+            "duration_ms": round((time.perf_counter() - rewrite_started) * 1000, 2),
+            "query_chars": len(retrieval_query),
+            "history_messages": len(conversation),
+        },
+    )
 
     # 召回 + 重排是 CPU 密集（向量检索、BM25、cross-encoder 都在本地跑），
     # 必须挪到线程里，不能堵住事件循环。
+    retrieval_started = time.perf_counter()
     chunks: list[ScoredChunk] = await asyncio.to_thread(
         retriever.retrieve,
         retrieval_query,
         top_k,
+    )
+    logger.info(
+        "chat 阶段完成",
+        extra={
+            "request_id": trace_id,
+            "phase": "retrieve_and_rerank",
+            "duration_ms": round((time.perf_counter() - retrieval_started) * 1000, 2),
+            "candidate_count": len(chunks),
+            "result_count": len(chunks),
+        },
     )
 
     # 查询改写偶尔会过度扩展。没有命中时再用原问题兜底一次，
@@ -113,8 +137,17 @@ async def rag_answer_stream(
     history_section = f"【最近对话】\n{conversation_text}\n\n" if conversation_text else ""
     user = f"{history_section}【参考资料】\n{context}\n\n【当前问题】\n{question}"
 
+    generation_started = time.perf_counter()
     async for piece in client.chat_stream(system=SYSTEM_PROMPT, user=user):
         yield ("delta", piece)
+    logger.info(
+        "chat 阶段完成",
+        extra={
+            "request_id": trace_id,
+            "phase": "generation",
+            "duration_ms": round((time.perf_counter() - generation_started) * 1000, 2),
+        },
+    )
 
     yield ("done", {})
 

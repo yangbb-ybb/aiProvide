@@ -21,7 +21,10 @@ class ChatRequest(BaseModel):
         max_length=12,
         description="最近几轮会话，仅用于理解追问和生成连贯回答",
     )
-    session_id: str | None = Field(default=None, description="会话 id，v1 不做持久化")
+    session_id: str | None = Field(
+        default=None,
+        description="会话 id，不传就新建；会话和消息会落 SQLite",
+    )
     top_k: int | None = Field(default=None, ge=1, le=20, description="送进上下文的块数，默认取 RERANK_TOP_K")
     use_web: bool = Field(default=False, description="M4：是否允许联网搜索")
 

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -108,8 +109,15 @@ class Retriever:
         """只做召回和 RRF 融合，不重排。给调试面板和评测用。"""
         limit = min(top_n, self.top_n) if top_n else self.top_n
 
-        dense_rows = self.vector_store.search(self.embedder.embed_query(query), limit=limit)
+        embed_started = time.perf_counter()
+        query_vector = self.embedder.embed_query(query)
+        logger.info("检索阶段完成：query_embedding_ms=%.2f", (time.perf_counter() - embed_started) * 1000)
+        dense_started = time.perf_counter()
+        dense_rows = self.vector_store.search(query_vector, limit=limit)
+        logger.info("检索阶段完成：dense_ms=%.2f dense_count=%d", (time.perf_counter() - dense_started) * 1000, len(dense_rows))
+        bm25_started = time.perf_counter()
         bm25_hits = self.bm25_index.search(query, limit=limit)
+        logger.info("检索阶段完成：bm25_ms=%.2f bm25_count=%d", (time.perf_counter() - bm25_started) * 1000, len(bm25_hits))
 
         # ---- RRF 融合 ----
         # score(d) = 1/(K + rank_dense) + 1/(K + rank_bm25)
@@ -161,7 +169,9 @@ class Retriever:
         top = scored[: self.fusion_top_n]
 
         if self.neighbor_expand > 0:
+            neighbor_started = time.perf_counter()
             top = self._expand_neighbors(top)
+            logger.info("检索阶段完成：neighbor_ms=%.2f expanded_count=%d", (time.perf_counter() - neighbor_started) * 1000, len(top))
 
         logger.info(
             "召回完成：dense=%d bm25=%d 融合=%d 候选=%d",

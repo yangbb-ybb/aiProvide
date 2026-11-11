@@ -34,6 +34,21 @@ dependencies = [
 [tool.uv]
 package = false
 
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "BLE"]
+ignore = [
+    # FastAPI 的依赖注入必须写在参数默认值里（Depends(...) 是框架约定，不是 bug）
+    "B008",
+    # 项目规范要求注释用中文，中文标点（全角逗号/括号）是刻意的
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
 [dependency-groups]
 dev = [
     "ruff>=0.8",

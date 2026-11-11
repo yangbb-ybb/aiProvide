@@ -55,6 +55,7 @@ server/app/
 | trafilatura + beautifulsoup4 | 网页正文抽取 | 中 |
 | 前端：vue / vite / pinia | UI | — |
 | pytest（dev 组） | 跑 `tests/` 下的单元测试 | 小（仅开发期，不进运行时） |
+| ruff（dev 组） | 静态检查（`uv run ruff check app/ tests/`） | 小（仅开发期，不进运行时） |
 
 **刻意不引入**：torch、transformers、sentence-transformers、langchain、llama-index、chroma、milvus-client、faiss。
 
