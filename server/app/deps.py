@@ -14,6 +14,7 @@ from .rag.embedder import Embedder
 from .rag.reranker import Reranker
 from .rag.retriever import Retriever
 from .store.bm25_index import BM25Index
+from .store.conversation_store import ConversationStore
 from .store.vector_store import VectorStore
 
 
@@ -63,6 +64,12 @@ def get_reranker() -> Reranker:
     """重排器单例。RERANK_ENABLED=false 时它自己会跳过。"""
     s = get_settings()
     return Reranker(model_name=s.rerank_model, enabled=s.rerank_enabled)
+
+
+@lru_cache
+def get_conversation_store() -> ConversationStore:
+    """SQLite 会话、消息和接口审计存储单例。"""
+    return ConversationStore(get_settings().conversation_db_path)
 
 
 @lru_cache

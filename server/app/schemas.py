@@ -5,10 +5,22 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+class ChatHistoryMessage(BaseModel):
+    """用于理解追问指代的短期会话记录。"""
+
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class ChatRequest(BaseModel):
     """POST /api/chat 请求体。"""
 
     question: str = Field(min_length=1, description="用户问题")
+    history: list[ChatHistoryMessage] = Field(
+        default_factory=list,
+        max_length=12,
+        description="最近几轮会话，仅用于理解追问和生成连贯回答",
+    )
     session_id: str | None = Field(default=None, description="会话 id，v1 不做持久化")
     top_k: int | None = Field(default=None, ge=1, le=20, description="送进上下文的块数，默认取 RERANK_TOP_K")
     use_web: bool = Field(default=False, description="M4：是否允许联网搜索")

@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     url_max_redirects: int = 3
     url_allowed_content_types: str = "text/html,application/xhtml+xml"
 
+    # ---------- 日志 / 会话 ----------
+    log_level: str = "INFO"
+    log_max_bytes: int = 20 * 1024 * 1024
+    log_backup_count: int = 10
+
     # ---------- 其它 ----------
     data_dir: str = "./data"
     cors_origins: str = "http://localhost:5173"
@@ -98,6 +103,16 @@ class Settings(BaseSettings):
     def bm25_path(self) -> Path:
         """BM25 关键词索引目录。"""
         return self.data_path / "bm25"
+
+    @property
+    def conversation_db_path(self) -> Path:
+        """会话、消息和接口审计记录使用的 SQLite 数据库。"""
+        return self.data_path / "app.db"
+
+    @property
+    def log_path(self) -> Path:
+        """应用结构化日志目录。"""
+        return self.data_path / "logs"
 
 
 @lru_cache

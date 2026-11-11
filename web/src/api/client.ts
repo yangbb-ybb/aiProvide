@@ -50,11 +50,16 @@ export interface DocumentSummary {
   mtime: number
 }
 
+export interface ChatHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export type ChatEvent =
   | { type: 'delta'; text: string }
   | { type: 'citation'; citations: Citation[] }
-  | { type: 'done' }
-  | { type: 'error'; message: string }
+  | { type: 'done'; session_id?: string }
+  | { type: 'error'; message: string; session_id?: string }
 
 export interface Health {
   status: string
@@ -135,11 +140,18 @@ export async function searchChunks(query: string, topK = 10): Promise<SearchResp
 }
 
 /** 发起流式问答，逐个吐出后端事件。 */
-export async function* chatStream(question: string, topK?: number): AsyncGenerator<ChatEvent> {
+export async function* chatStream(
+  question: string,
+  history: ChatHistoryMessage[] = [],
+  sessionId?: string,
+  topK?: number,
+): AsyncGenerator<ChatEvent> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (sessionId) headers['X-Session-ID'] = sessionId
   const res = await fetch(`${BASE}/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, top_k: topK ?? null }),
+    headers,
+    body: JSON.stringify({ question, history, session_id: sessionId ?? null, top_k: topK ?? null }),
   })
   if (!res.ok) {
     throw new Error(`请求失败：HTTP ${res.status}`)

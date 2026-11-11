@@ -28,8 +28,8 @@ watch(
   <div class="chat">
     <div ref="listEl" class="messages">
       <div v-if="store.messages.length === 0" class="empty">
-        <p>问点什么吧 —— 回答只会来自你导入的资料，并标注来源。</p>
-        <p class="hint">M0 阶段是直通模型的演示；M1 起会走完整的检索 + 引用链路。</p>
+        <p>问点什么吧 —— 回答会基于你导入的资料，并标注来源。</p>
+        <p class="hint">支持连续追问和不同说法；事实仍以知识库资料为准。</p>
       </div>
 
       <div v-for="(m, i) in store.messages" :key="i" :class="['msg', m.role]">

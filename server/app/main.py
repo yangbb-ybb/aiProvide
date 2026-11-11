@@ -6,13 +6,22 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+import asyncio
+import logging
+import time
+from uuid import uuid4
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import chat, documents, health, search
+from .api import chat, documents, health, search, sessions
 from .config import get_settings
+from .deps import get_conversation_store
+from .logging_config import configure_logging
 
 settings = get_settings()
+configure_logging(settings)
+logger = logging.getLogger("app.request")
 
 app = FastAPI(
     title="本地 RAG 知识库",
@@ -28,10 +37,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    """记录每个接口的状态码、耗时、来源和会话 ID。"""
+    request_id = request.headers.get("X-Request-ID") or uuid4().hex
+    session_id = request.headers.get("X-Session-ID")
+    started = time.perf_counter()
+    status_code = 500
+    error = None
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as exc:
+        error = type(exc).__name__
+        raise
+    finally:
+        duration_ms = round((time.perf_counter() - started) * 1000, 2)
+        client_ip = request.client.host if request.client else None
+        extra = {
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": status_code,
+            "duration_ms": duration_ms,
+            "client_ip": client_ip,
+            "session_id": session_id,
+        }
+        logger.info("接口请求完成", extra=extra)
+        store = get_conversation_store()
+        await asyncio.to_thread(
+            store.log_api_request,
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            query=request.url.query,
+            status_code=status_code,
+            duration_ms=duration_ms,
+            client_ip=client_ip,
+            session_id=session_id,
+            error=error,
+        )
+
+
 app.include_router(health.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
+app.include_router(sessions.router, prefix="/api")
 
 
 @app.get("/")
